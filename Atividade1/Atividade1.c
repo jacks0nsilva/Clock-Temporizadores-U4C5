@@ -21,8 +21,8 @@ LED leds[LED_COUNT] = {
 
 // Inicializa os pinos dos LEDs
 void initialize_gpio(LED *led) {
-    gpio_init(led->pin);
-    gpio_set_dir(led->pin, GPIO_OUT);
+    gpio_init(led->pin); // Inicializa o pino do LED
+    gpio_set_dir(led->pin, GPIO_OUT); // Define o pino como saída
     gpio_put(led->pin, led->state); // Mantém o estado inicial do LED
 }
 
