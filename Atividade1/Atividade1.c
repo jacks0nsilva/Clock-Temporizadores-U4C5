@@ -3,68 +3,62 @@
 #include "hardware/timer.h"
 
 #define LED_COUNT 3 // Quantidade de LEDs
+static volatile int led_index = 0; // Começa com o LED vermelho aceso
 
-// Struct para representar um LED
+// Estrutura para representar um LED
 typedef struct {
-    uint pin; // Pino do LED
-    bool state; // Estado do LED (ligado/desligado)
+    uint pin;      // Pino do LED
+    bool state;    // Estado do LED (ligado/desligado)
+    char *message; // Mensagem exibida no terminal
 } LED;
 
+// Definição dos LEDs e suas mensagens
 LED leds[LED_COUNT] = {
-    {13, false}, // LED vermelho 
-    {12, false}, // LED amarelo 
-    {11, false} // LED verde 
-
+    {13, true, "PARE! O sinal está fechado."},  // LED vermelho (inicialmente ligado)
+    {12, false, "ATENÇÃO! O sinal está amarelo."}, // LED amarelo
+    {11, false, "PROSSIGA! O sinal está verde."}  // LED verde
 };
 
-
-
 // Inicializa os pinos dos LEDs
-void initialize_gpio(LED *led){
-    gpio_init(led->pin); // Inicializa o GPIO
-    gpio_set_dir(led->pin, GPIO_OUT); // Define o pino como saída
-    gpio_put(led->pin, 0); // Inicializa o pino em nível lógico baixo
+void initialize_gpio(LED *led) {
+    gpio_init(led->pin);
+    gpio_set_dir(led->pin, GPIO_OUT);
+    gpio_put(led->pin, led->state); // Mantém o estado inicial do LED
 }
 
-// Função de callback do temporizador
+// Callback do temporizador para alternar os LEDs
 bool repeating_timer_callback(struct repeating_timer *timer) {
-    static int led_index = 1; // Índice do LED que será aceso
-    printf("Callback is on! | index: %d\n", led_index);
-    
-// Desliga todos os LEDs antes de ligar o próximo
-    for (int i = 0; i < LED_COUNT; i++) {
-        leds[i].state = false;
-        gpio_put(leds[i].pin, leds[i].state);
-    }
 
-    // Liga apenas o LED atual
+    // Apaga apenas o LED anterior
+    leds[led_index].state = false;
+    gpio_put(leds[led_index].pin, leds[led_index].state);
+
+    // Atualiza o índice para o próximo LED
+    led_index = (led_index + 1) % LED_COUNT;
+
+    // Liga o novo LED
     leds[led_index].state = true;
     gpio_put(leds[led_index].pin, leds[led_index].state);
 
-    // Atualiza o index para o próximo LED na próxima chamada do timer
-    led_index = (led_index + 1) % LED_COUNT;
+
     return true;
 }
 
-int main()
-{
-    // Inicializa a comunicação serial
-    stdio_init_all();
+int main() {
+    stdio_init_all(); // Inicializa comunicação serial
 
     // Inicializa os pinos dos LEDs
-    for(int i = 0; i < LED_COUNT; i++){
+    for (int i = 0; i < LED_COUNT; i++) {
         initialize_gpio(&leds[i]);
     }
 
-    // Declaração da estrutura do temporizador
-    // Essa estrutura armzena informações sobre o temporizador
+    // Configura o temporizador para alternar os LEDs a cada 3 segundos
     struct repeating_timer timer;
-
-    // Inicializa o temporizador com um intervalo de 3000ms (3 segundos)
     add_repeating_timer_ms(3000, repeating_timer_callback, NULL, &timer);
-    leds[0].state = true; // Habilita o LED vermelho
-    gpio_put(leds[0].pin, leds[0].state); // Acerde o LED vermelho
+
+    // Loop principal: exibe a mensagem a cada 1 segundo
     while (true) {
-        sleep_ms(10); // Pausa por 10 milissegundos para não sobrecarregar o processador
+        printf("%s\n", leds[led_index].message); // Exibe a mensagem do LED aceso
+        sleep_ms(1000); // Aguarda 1 segundo antes de imprimir novamente
     }
 }
