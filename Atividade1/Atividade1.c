@@ -39,7 +39,7 @@ bool repeating_timer_callback(struct repeating_timer *timer) {
     // Liga o novo LED
     leds[led_index].state = true;
     gpio_put(leds[led_index].pin, leds[led_index].state);
-
+    printf("Alterando o sinal!\n");
 
     return true;
 }
