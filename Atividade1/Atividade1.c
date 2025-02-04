@@ -2,46 +2,47 @@
 #include "pico/stdlib.h"
 #include "hardware/timer.h"
 
-#define LED_PIN_GREEN 11 // Define o pino do LED verde
-#define LED_PIN_YELLOW 12 // Define o pino do LED amarelo
-#define LED_PIN_RED 13 // Define o pino do LED vermelho
+#define LED_COUNT 3 // Quantidade de LEDs
 
-static volatile int count = 0;
+// Struct para representar um LED
+typedef struct {
+    uint pin; // Pino do LED
+    bool state; // Estado do LED (ligado/desligado)
+} LED;
+
+LED leds[LED_COUNT] = {
+    {13, false}, // LED vermelho 
+    {12, false}, // LED amarelo 
+    {11, false} // LED verde 
+
+};
 
 
-void initialize_gpio(uint pin, uint mode){
-    gpio_init(pin); // Inicializa o GPIO
-    gpio_set_dir(pin, mode); // Define o pino como saída
-    gpio_put(pin, 0); // Inicializa o pino em nível lógico baixo
+
+// Inicializa os pinos dos LEDs
+void initialize_gpio(LED *led){
+    gpio_init(led->pin); // Inicializa o GPIO
+    gpio_set_dir(led->pin, GPIO_OUT); // Define o pino como saída
+    gpio_put(led->pin, 0); // Inicializa o pino em nível lógico baixo
 }
 
+// Função de callback do temporizador
 bool repeating_timer_callback(struct repeating_timer *timer) {
-    printf("Callback is on!\n");
-    switch(count){
-        case 0:
-            printf("Case 0\n");
-            gpio_put(LED_PIN_RED, 1);
-            gpio_put(LED_PIN_GREEN, 0);
-            gpio_put(LED_PIN_YELLOW, 0);
-            count++;
-            break;
-        case 1:
-            printf("Case 1\n");
-            gpio_put(LED_PIN_YELLOW, 1);
-            gpio_put(LED_PIN_RED, 0);
-            gpio_put(LED_PIN_GREEN, 0);
-            count++;
-            break;
-        case 2:
-            printf("Case 2\n");
-            gpio_put(LED_PIN_GREEN, 1);
-            gpio_put(LED_PIN_YELLOW, 0);
-            gpio_put(LED_PIN_RED, 0);
-            count = 0;
-            break;
-        default:
-            break;
+    static int led_index = 1; // Índice do LED que será aceso
+    printf("Callback is on! | index: %d\n", led_index);
+    
+// Desliga todos os LEDs antes de ligar o próximo
+    for (int i = 0; i < LED_COUNT; i++) {
+        leds[i].state = false;
+        gpio_put(leds[i].pin, leds[i].state);
     }
+
+    // Liga apenas o LED atual
+    leds[led_index].state = true;
+    gpio_put(leds[led_index].pin, leds[led_index].state);
+
+    // Atualiza o index para o próximo LED na próxima chamada do timer
+    led_index = (led_index + 1) % LED_COUNT;
     return true;
 }
 
@@ -49,17 +50,20 @@ int main()
 {
     // Inicializa a comunicação serial
     stdio_init_all();
-    initialize_gpio(LED_PIN_GREEN, GPIO_OUT);
-    initialize_gpio(LED_PIN_YELLOW, GPIO_OUT);
-    initialize_gpio(LED_PIN_RED, GPIO_OUT);
+
+    // Inicializa os pinos dos LEDs
+    for(int i = 0; i < LED_COUNT; i++){
+        initialize_gpio(&leds[i]);
+    }
 
     // Declaração da estrutura do temporizador
     // Essa estrutura armzena informações sobre o temporizador
     struct repeating_timer timer;
 
-    // Inicializa o temporizador com um intervalo de 1000ms (1 segundo)
+    // Inicializa o temporizador com um intervalo de 3000ms (3 segundos)
     add_repeating_timer_ms(3000, repeating_timer_callback, NULL, &timer);
-
+    leds[0].state = true; // Habilita o LED vermelho
+    gpio_put(leds[0].pin, leds[0].state); // Acerde o LED vermelho
     while (true) {
         sleep_ms(10); // Pausa por 10 milissegundos para não sobrecarregar o processador
     }
